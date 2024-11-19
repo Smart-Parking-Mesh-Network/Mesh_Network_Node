@@ -1,18 +1,34 @@
 #include <Arduino.h>
 
-// put function declarations here:
-int myFunction(int, int);
+// Variables
+const int pins[] = {0, 2, 4, 5, 9, 10, 12, 13, 14, 16};
+int freeSpots = 0;
 
+// Function declarations:
+void countFreeSpots();
+
+// Setup function
 void setup() {
-  // put your setup code here, to run once:
-  int result = myFunction(2, 3);
-}
+  Serial.begin(115200);
+
+  // Set pins as input with pull-up resistors
+  for (int pin : pins) {
+    pinMode(pin, INPUT_PULLUP);
+  }
+}  
 
 void loop() {
-  // put your main code here, to run repeatedly:
+  countFreeSpots();
+  Serial.println(freeSpots);
+  delay(1000);
 }
 
-// put function definitions here:
-int myFunction(int x, int y) {
-  return x + y;
+// function definitions:
+
+// Function to count free parking spots
+void countFreeSpots() {
+  freeSpots = 0;
+  for (int pin : pins) {
+    if (digitalRead(pin)) ++freeSpots;
+  }
 }
