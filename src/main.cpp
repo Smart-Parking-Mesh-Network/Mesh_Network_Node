@@ -11,6 +11,7 @@ const int pins[] = {0, 2, 4, 5, 9, 10, 12, 13, 14, 16};
 int freeSpots = 0;
 const String localSection = "A"; // Set to "A" for node A, "B" for node B,...
 painlessMesh mesh;
+Scheduler userScheduler;
 
 // Function declarations:
 void countFreeSpots();
@@ -20,20 +21,32 @@ void newConnectionCallback(uint32_t nodeId);
 void changedConnectionCallback();
 void nodeTimeAdjustedCallback(int32_t offset);
 
+// Task for sending messages
+Task taskSendMessage(TASK_SECOND * 1, TASK_FOREVER, &sendMessage);
+
 // Setup function
 void setup() {
   Serial.begin(115200);
-
   // Set pins as input with pull-up resistors
   for (int pin : pins) {
     pinMode(pin, INPUT_PULLUP);
   }
+
+  // Mesh initialization
+  mesh.setDebugMsgTypes(ERROR | STARTUP); // Debug messages
+  mesh.init(MESH_PREFIX, MESH_PASSWORD, &userScheduler, MESH_PORT);
+  mesh.onReceive(&receivedCallback);
+  mesh.onNewConnection(&newConnectionCallback);
+  mesh.onChangedConnections(&changedConnectionCallback);
+  mesh.onNodeTimeAdjusted(&nodeTimeAdjustedCallback);
+
+  // Add and enable tasks
+  userScheduler.addTask(taskSendMessage);
+  taskSendMessage.enable();
 }  
 
 void loop() {
-  countFreeSpots();
-  Serial.println(freeSpots);
-  delay(1000);
+  mesh.update();
 }
 
 // Function definitions:
@@ -48,6 +61,9 @@ void countFreeSpots() {
 
 // Function to broadcast free parking spots to the mesh
 void sendMessage() {
+  String msg = localSection + " " + String(freeSpots);
+  mesh.sendBroadcast(msg);
+  taskSendMessage.setInterval(random(TASK_SECOND * 1, TASK_SECOND * 5)); // Randomize broadcast interval
   Serial.println("Message broadcasted");
 }
 // Callback for receiving messages from the mesh
