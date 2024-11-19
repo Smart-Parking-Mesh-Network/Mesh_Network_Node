@@ -8,13 +8,13 @@
 
 // Variables
 const int pins[] = {0, 2, 4, 5, 9, 10, 12, 13, 14, 16};
-int freeSpots = 0;
 const String localSection = "A"; // Set to "A" for node A, "B" for node B,...
 painlessMesh mesh;
 Scheduler userScheduler;
+String sendMsg = "", receivedMsg = "";
 
 // Function declarations:
-void countFreeSpots();
+int countFreeSpots();
 void sendMessage();
 void receivedCallback(uint32_t from, String &msg);
 void newConnectionCallback(uint32_t nodeId);
@@ -52,23 +52,27 @@ void loop() {
 // Function definitions:
 
 // Function to count free parking spots
-void countFreeSpots() {
-  freeSpots = 0;
+int countFreeSpots() {
+  int freeSpots = 0;
   for (int pin : pins) {
     if (digitalRead(pin)) ++freeSpots;
   }
+  return freeSpots;
 }
 
 // Function to broadcast free parking spots to the mesh
 void sendMessage() {
-  String msg = localSection + " " + String(freeSpots);
-  mesh.sendBroadcast(msg);
+  sendMsg = localSection + " " + String(countFreeSpots()) + " " +receivedMsg;
+  mesh.sendBroadcast(sendMsg);
+  sendMsg = "";
+  receivedMsg = "";
   taskSendMessage.setInterval(random(TASK_SECOND * 1, TASK_SECOND * 5)); // Randomize broadcast interval
   Serial.println("Message broadcasted");
 }
 // Callback for receiving messages from the mesh
 void receivedCallback(uint32_t from, String &msg) {
-  Serial.printf("Received from %u: msg=%s\n", from, msg.c_str());
+  Serial.printf("Received from %u msg=%s\n", from, msg.c_str());
+  receivedMsg = msg;
 }
 
 // Callback for new connections
