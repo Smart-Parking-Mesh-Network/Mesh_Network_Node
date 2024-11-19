@@ -11,12 +11,13 @@ const int pins[] = {0, 2, 4, 5, 9, 10, 12, 13, 14, 16};
 const String localSection = "A"; // Set to "A" for node A, "B" for node B,...
 painlessMesh mesh;
 Scheduler userScheduler;
-String sendMsg = "", lastReceivedSection = "";
-int lastReceivedSpots = -1; 
 
+std::map<String, int> receivedSpots = {
+  {"A", -1}, {"B", -1}, {"C", -1}, {"D", -1} 
+};
 // Function declarations:
-int countFreeSpots();
 void sendMessage();
+int countFreeSpots();
 void receivedCallback(uint32_t from, String &msg);
 void newConnectionCallback(uint32_t nodeId);
 void changedConnectionCallback();
@@ -51,6 +52,21 @@ void loop() {
 }
 
 // Function definitions:
+// Function to broadcast free parking spots to the mesh
+void sendMessage() {
+
+  String msg = localSection + " " + String(countFreeSpots());
+  
+  // Append data for each section: "A 5 B 3 C 4 D 6 E 2"
+  for (const auto &section : receivedSpots) {
+    if (section.first != localSection && section.second != -1) {
+      msg += " " + section.first + " " + String(section.second);
+    }
+  }
+  mesh.sendBroadcast(msg);
+  // taskSendMessage.setInterval(random(TASK_SECOND * 1, TASK_SECOND * 5)); // Randomize broadcast interval
+  Serial.println("Sending: " + msg);
+}
 
 // Function to count free parking spots
 int countFreeSpots() {
@@ -61,29 +77,26 @@ int countFreeSpots() {
   return freeSpots;
 }
 
-// Function to broadcast free parking spots to the mesh
-void sendMessage() {
-  sendMsg = localSection + " " + String(countFreeSpots());
-  if (lastReceivedSection != "" && lastReceivedSpots != -1) {
-    sendMsg += " " + lastReceivedSection + " " + String(lastReceivedSpots);
-  }
-  mesh.sendBroadcast(sendMsg);
-  sendMsg = "";
-  taskSendMessage.setInterval(random(TASK_SECOND * 1, TASK_SECOND * 5)); // Randomize broadcast interval
-  Serial.println("Message broadcasted");
-}
 // Callback for receiving messages from the mesh
 void receivedCallback(uint32_t from, String &msg) {
   Serial.printf("Received from %u msg=%s\n", from, msg.c_str());
-  int index = msg.indexOf(' ');
-  if (index != -1) {
-    String receivedSection = msg.substring(0, index);
-    int receivedSpots = msg.substring(index + 1).toInt();
 
-    if (receivedSection != localSection && 
-        (receivedSection != lastReceivedSection || receivedSpots != lastReceivedSpots)) {
-      lastReceivedSection = receivedSection;
-      lastReceivedSpots = receivedSpots;
+  unsigned int index = 0;
+  while (index < msg.length()) {
+    int spaceIdx = msg.indexOf(' ', index);
+    if (spaceIdx == -1) break;
+
+    String section = msg.substring(index, spaceIdx);
+    index = spaceIdx + 1;
+
+    spaceIdx = msg.indexOf(' ', index);
+    int spots = (spaceIdx == -1) ? msg.substring(index).toInt() : msg.substring(index, spaceIdx).toInt();
+    index = (spaceIdx == -1) ? msg.length() : spaceIdx + 1;
+
+    // Update section data if it’s from a different node and has changed
+    if (section != localSection && receivedSpots[section] != spots) {
+      receivedSpots[section] = spots;
+      Serial.printf("Updated section %s with spots %d\n", section.c_str(), spots);
     }
   }
 }
