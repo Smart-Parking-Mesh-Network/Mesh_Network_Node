@@ -11,7 +11,8 @@ const int pins[] = {0, 2, 4, 5, 9, 10, 12, 13, 14, 16};
 const String localSection = "A"; // Set to "A" for node A, "B" for node B,...
 painlessMesh mesh;
 Scheduler userScheduler;
-String sendMsg = "", receivedMsg = "";
+String sendMsg = "", lastReceivedSection = "";
+int lastReceivedSpots = -1; 
 
 // Function declarations:
 int countFreeSpots();
@@ -62,17 +63,29 @@ int countFreeSpots() {
 
 // Function to broadcast free parking spots to the mesh
 void sendMessage() {
-  sendMsg = localSection + " " + String(countFreeSpots()) + " " +receivedMsg;
+  sendMsg = localSection + " " + String(countFreeSpots());
+  if (lastReceivedSection != "" && lastReceivedSpots != -1) {
+    sendMsg += " " + lastReceivedSection + " " + String(lastReceivedSpots);
+  }
   mesh.sendBroadcast(sendMsg);
   sendMsg = "";
-  receivedMsg = "";
   taskSendMessage.setInterval(random(TASK_SECOND * 1, TASK_SECOND * 5)); // Randomize broadcast interval
   Serial.println("Message broadcasted");
 }
 // Callback for receiving messages from the mesh
 void receivedCallback(uint32_t from, String &msg) {
   Serial.printf("Received from %u msg=%s\n", from, msg.c_str());
-  receivedMsg = msg;
+  int index = msg.indexOf(' ');
+  if (index != -1) {
+    String receivedSection = msg.substring(0, index);
+    int receivedSpots = msg.substring(index + 1).toInt();
+
+    if (receivedSection != localSection && 
+        (receivedSection != lastReceivedSection || receivedSpots != lastReceivedSpots)) {
+      lastReceivedSection = receivedSection;
+      lastReceivedSpots = receivedSpots;
+    }
+  }
 }
 
 // Callback for new connections
