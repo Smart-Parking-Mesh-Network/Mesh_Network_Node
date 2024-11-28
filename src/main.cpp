@@ -12,9 +12,17 @@ const String localSection = "A"; // Set to "A" for node A, "B" for node B,...
 painlessMesh mesh;
 Scheduler userScheduler;
 
-std::map<String, int> receivedSpots = {
-  {"A", -1}, {"B", -1}, {"C", -1}, {"D", -1} 
+// scores
+const int entranceScore = 2;  
+
+// Struct to store received data
+struct SectionData {
+  int freeSpots = -1;
+  int entranceScore = 0;
 };
+
+std::map<String, SectionData> receivedSpots;
+
 // Function declarations:
 void sendMessage();
 int countFreeSpots();
@@ -54,13 +62,16 @@ void loop() {
 // Function definitions:
 // Function to broadcast free parking spots to the mesh
 void sendMessage() {
+  int freeSpots = countFreeSpots();
 
-  String msg = localSection + " " + String(countFreeSpots());
-  
+  // local Section message
+  String msg = localSection + " " + String(freeSpots) + " " + String(entranceScore);
+
   // Append data for each section: "A 5 B 3 C 4 D 6 E 2"
   for (const auto &section : receivedSpots) {
-    if (section.first != localSection && section.second != -1) {
-      msg += " " + section.first + " " + String(section.second);
+    if (section.first != localSection && section.second.freeSpots != -1) {
+      msg += " " + section.first + " " + String(section.second.freeSpots) + " " +
+             String(section.second.entranceScore);
     }
   }
   mesh.sendBroadcast(msg);
@@ -90,13 +101,18 @@ void receivedCallback(uint32_t from, String &msg) {
     index = spaceIdx + 1;
 
     spaceIdx = msg.indexOf(' ', index);
-    int spots = (spaceIdx == -1) ? msg.substring(index).toInt() : msg.substring(index, spaceIdx).toInt();
+    int spots = msg.substring(index, spaceIdx).toInt();
+    index = spaceIdx + 1;
+    
+    // read entrance Score
+    // Note: The End condition is for last score -> (spaceIdx == -1)
+    spaceIdx = msg.indexOf(' ', index); 
+    int entranceScore = (spaceIdx == -1) ? msg.substring(index).toInt() : msg.substring(index, spaceIdx).toInt();
     index = (spaceIdx == -1) ? msg.length() : spaceIdx + 1;
-
-    // Update section data if it’s from a different node and has changed
-    if (section != localSection && receivedSpots[section] != spots) {
-      receivedSpots[section] = spots;
-      Serial.printf("Updated section %s with spots %d\n", section.c_str(), spots);
+     
+    if (section != localSection) {
+      receivedSpots[section] = {spots, entranceScore};
+      Serial.printf("Updated section %s: spots=%d, entrance=%d\n", section.c_str(), spots, entranceScore);
     }
   }
 }
