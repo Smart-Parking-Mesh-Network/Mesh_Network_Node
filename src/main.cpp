@@ -68,11 +68,14 @@ void sendMessage() {
   String msg = localSection + " " + String(freeSpots) + " " + String(entranceScore);
 
   // Append data for each section: "A 5 B 3 C 4 D 6 E 2"
-  for (const auto &section : receivedSpots) {
-    if (section.first != localSection && section.second.freeSpots != -1) {
-      msg += " " + section.first + " " + String(section.second.freeSpots) + " " +
-             String(section.second.entranceScore);
+  if(receivedSpots.size() > 0) {
+    for (const auto &section : receivedSpots) {
+      if (section.first != localSection && section.second.freeSpots != -1) {
+        msg += " " + section.first + " " + String(section.second.freeSpots) + " " +
+              String(section.second.entranceScore);
+      }
     }
+    receivedSpots.clear();
   }
   mesh.sendBroadcast(msg);
   // taskSendMessage.setInterval(random(TASK_SECOND * 1, TASK_SECOND * 5)); // Randomize broadcast interval
