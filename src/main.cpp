@@ -78,7 +78,7 @@ void sendMessage() {
     receivedSpots.clear();
   }
   mesh.sendBroadcast(msg);
-  taskSendMessage.setInterval(random(TASK_SECOND * 1, TASK_SECOND * 3)); // Randomize broadcast interval
+  // taskSendMessage.setInterval(random(TASK_SECOND * 1, TASK_SECOND * 2)); // Randomize broadcast interval
   Serial.println("Sending: " + msg);
 }
 
