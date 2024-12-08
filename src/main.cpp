@@ -14,11 +14,12 @@ Scheduler userScheduler;
 
 // scores
 const int entranceScore = 2;  
-
+const int elevatorScore = 3;
 // Struct to store received data
 struct SectionData {
   int freeSpots = -1;
   int entranceScore = 0;
+  int elevatorScore = 0;
 };
 
 std::map<String, SectionData> receivedSpots;
@@ -65,14 +66,14 @@ void sendMessage() {
   int freeSpots = countFreeSpots();
 
   // local Section message
-  String msg = localSection + " " + String(freeSpots) + " " + String(entranceScore);
+  String msg = localSection + " " + String(freeSpots) + " " + String(entranceScore) + " " + String(elevatorScore);
 
   // Append data for each section: "A 5 B 3 C 4 D 6 E 2"
   if(receivedSpots.size() > 0) {
     for (const auto &section : receivedSpots) {
       if (section.first != localSection && section.second.freeSpots != -1) {
         msg += " " + section.first + " " + String(section.second.freeSpots) + " " +
-              String(section.second.entranceScore);
+              String(section.second.entranceScore) + " " + String(section.second.elevatorScore);
       }
     }
     receivedSpots.clear();
@@ -106,16 +107,20 @@ void receivedCallback(uint32_t from, String &msg) {
     spaceIdx = msg.indexOf(' ', index);
     int spots = msg.substring(index, spaceIdx).toInt();
     index = spaceIdx + 1;
+
+    spaceIdx = msg.indexOf(' ', index);
+    int entranceScore = msg.substring(index, spaceIdx).toInt();
+    index = spaceIdx + 1;
     
     // read entrance Score
     // Note: The End condition is for last score -> (spaceIdx == -1)
     spaceIdx = msg.indexOf(' ', index); 
-    int entranceScore = (spaceIdx == -1) ? msg.substring(index).toInt() : msg.substring(index, spaceIdx).toInt();
+    int elevatorScore = (spaceIdx == -1) ? msg.substring(index).toInt() : msg.substring(index, spaceIdx).toInt();
     index = (spaceIdx == -1) ? msg.length() : spaceIdx + 1;
      
     if (section != localSection) {
-      receivedSpots[section] = {spots, entranceScore};
-      Serial.printf("Updated section %s: spots=%d, entrance=%d\n", section.c_str(), spots, entranceScore);
+      receivedSpots[section] = {spots, entranceScore, elevatorScore};
+      Serial.printf("Updated section %s: spots=%d, entrance=%d, elevator=%d\n", section.c_str(), spots, entranceScore, elevatorScore);
     }
   }
 }
